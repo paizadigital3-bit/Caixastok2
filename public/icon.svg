@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#0A110E"/>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="#0E6B47"/>
+  <rect x="40" y="40" width="432" height="432" rx="80" stroke="#D4AF37" stroke-opacity="0.45" stroke-width="6"/>
+  <!-- Isometric Stock Cube + Vault Gold Mark -->
+  <path d="M256 112L376 176V304L256 368L136 304V176L256 112Z" fill="#0A110E" stroke="#D4AF37" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M136 176L256 240L376 176" stroke="#D4AF37" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M256 240V368" stroke="#D4AF37" stroke-width="14" stroke-linecap="round"/>
+  <!-- Gold Coin Badge / Kz Symbol -->
+  <circle cx="348" cy="348" r="76" fill="#D4AF37"/>
+  <text x="348" y="370" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="64" fill="#0A110E">Kz</text>
+</svg>

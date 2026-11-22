@@ -1,0 +1,211 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Merchant or creator account with subscription and 14-day trial metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "email": { "type": "string", "maxLength": 120 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["merchant", "creator"] },
+        "subscriptionStatus": { "type": "string", "enum": ["trial", "active", "revoked"] },
+        "trialStartAt": { "type": "string", "format": "date-time" },
+        "trialEndsAt": { "type": "string", "format": "date-time" },
+        "subscriptionEndsAt": { "type": "string", "format": "date-time" },
+        "subscriptionMonths": { "type": "number" },
+        "activatedCode": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "subscriptionStatus", "trialStartAt", "trialEndsAt", "subscriptionMonths", "createdAt", "updatedAt"]
+    },
+    "MerchantConfig": {
+      "title": "MerchantConfig",
+      "description": "Merchant financial settings including liquid capital, PIN code, and archived months.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "liquidCapital": { "type": "number" },
+        "pinCode": { "type": "string", "minLength": 4, "maxLength": 4, "pattern": "^[0-9]{4}$" },
+        "archivedMonths": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "liquidCapital", "pinCode", "archivedMonths", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory item with unit and box pricing, cost basis, and stock quantity.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "unitCost": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "boxPrice": { "type": "number" },
+        "unitsPerBox": { "type": "number" },
+        "stockUnits": { "type": "number" },
+        "minStockAlert": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "category", "unitCost", "unitPrice", "boxPrice", "unitsPerBox", "stockUnits", "minStockAlert", "createdAt", "updatedAt"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Sale transaction split into liquid capital recovery and period profit, supporting cash, Multicaixa, and credit (fiado).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "productId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 100 },
+        "saleMode": { "type": "string", "enum": ["unit", "box", "both"] },
+        "unitsQty": { "type": "number" },
+        "boxesQty": { "type": "number" },
+        "totalUnitsSold": { "type": "number" },
+        "unitCostAtSale": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "capitalPortion": { "type": "number" },
+        "profitPortion": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["dinheiro", "multicaixa", "fiado"] },
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "dueDate": { "type": "string", "maxLength": 20 },
+        "paidDate": { "type": "string", "maxLength": 20 },
+        "paidMethod": { "type": "string", "enum": ["", "dinheiro", "multicaixa"] },
+        "saleDate": { "type": "string", "maxLength": 20, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "productId", "productName", "saleMode", "unitsQty", "boxesQty", "totalUnitsSold", "unitCostAtSale", "totalAmount", "capitalPortion", "profitPortion", "paymentMethod", "status", "customerName", "customerPhone", "dueDate", "paidDate", "paidMethod", "saleDate", "createdAt", "updatedAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Operational expense or stock purchase record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "type": { "type": "string", "enum": ["expense", "stock_purchase"] },
+        "description": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "category": { "type": "string", "maxLength": 60 },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["dinheiro", "multicaixa", "capital"] },
+        "expenseDate": { "type": "string", "maxLength": 20, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "productId": { "type": "string", "maxLength": 128 },
+        "unitsAdded": { "type": "number" },
+        "transportCost": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "type", "description", "category", "amount", "paymentMethod", "expenseDate", "productId", "unitsAdded", "transportCost", "createdAt"]
+    },
+    "MonthlyReport": {
+      "title": "MonthlyReport",
+      "description": "Archived monthly financial closure snapshot.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "monthKey": { "type": "string", "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}$" },
+        "totalSales": { "type": "number" },
+        "totalCash": { "type": "number" },
+        "totalMulticaixa": { "type": "number" },
+        "totalExpenses": { "type": "number" },
+        "netProfit": { "type": "number" },
+        "liquidCapitalSnapshot": { "type": "number" },
+        "closedDate": { "type": "string", "maxLength": 20 },
+        "closedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "monthKey", "totalSales", "totalCash", "totalMulticaixa", "totalExpenses", "netProfit", "liquidCapitalSnapshot", "closedDate", "closedAt"]
+    },
+    "ActivationCode": {
+      "title": "ActivationCode",
+      "description": "Subscription activation code created and managed by the creator.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "minLength": 4, "maxLength": 32, "pattern": "^[A-Z0-9-]+$" },
+        "months": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "used", "revoked"] },
+        "createdByEmail": { "type": "string", "maxLength": 120 },
+        "usedByUid": { "type": "string", "maxLength": 128 },
+        "usedByEmail": { "type": "string", "maxLength": 120 },
+        "note": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "usedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "months", "status", "createdByEmail", "note", "createdAt"]
+    },
+    "PaymentProof": {
+      "title": "PaymentProof",
+      "description": "Submitted payment proof sent to paizadigital3@gmail.com for Caixastok subscription approval.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_-]+$" },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userEmail": { "type": "string", "maxLength": 120 },
+        "phone": { "type": "string", "minLength": 9, "maxLength": 30 },
+        "entity": { "type": "string", "maxLength": 20 },
+        "recipientEmail": { "type": "string", "maxLength": 120 },
+        "months": { "type": "number" },
+        "totalAmountKz": { "type": "number" },
+        "paymentChannel": { "type": "string", "enum": ["multicaixa", "iban"] },
+        "proofImageData": { "type": "string", "maxLength": 650000 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "generatedCode": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "userName", "userEmail", "phone", "entity", "recipientEmail", "months", "totalAmountKz", "paymentChannel", "proofImageData", "notes", "status", "createdAt"]
+    },
+    "BillingSettings": {
+      "title": "BillingSettings",
+      "description": "Global monthly subscription price configuration controlled by the creator.",
+      "type": "object",
+      "properties": {
+        "monthlyPriceKz": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["monthlyPriceKz", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/appSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/BillingSettings" },
+      "description": "Global application settings such as monthly subscription price."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User subscription profile and role document."
+    },
+    "/users/{userId}/config/{configId}": {
+      "schema": { "$ref": "#/entities/MerchantConfig" },
+      "description": "Merchant financial configuration, PIN, and archived months."
+    },
+    "/users/{userId}/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Merchant stock products."
+    },
+    "/users/{userId}/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Merchant sales and fiado credit entries."
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Merchant operational expenses and stock purchase records."
+    },
+    "/users/{userId}/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/MonthlyReport" },
+      "description": "Merchant archived monthly reports."
+    },
+    "/activationCodes/{codeId}": {
+      "schema": { "$ref": "#/entities/ActivationCode" },
+      "description": "Creator-issued activation codes for subscription unlocking."
+    },
+    "/paymentProofs/{proofId}": {
+      "schema": { "$ref": "#/entities/PaymentProof" },
+      "description": "Customer payment proof submissions for Caixastok."
+    }
+  }
+}

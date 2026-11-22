@@ -1,0 +1,396 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isCreator() {
+      return isVerified() && request.auth.token.email == 'paizadigital3@gmail.com';
+    }
+
+    function isOptString(data, key, maxLen) {
+      return !data.keys().hasAny([key]) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isOptTimestamp(data, key) {
+      return !data.keys().hasAny([key]) || data[key] == null || data[key] is timestamp;
+    }
+
+    // Validation Blueprints
+    function isValidUserAccount(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'subscriptionStatus', 'trialStartAt', 'trialEndsAt', 'subscriptionMonths', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'role', 'subscriptionStatus', 'trialStartAt', 'trialEndsAt', 'subscriptionEndsAt', 'subscriptionMonths', 'activatedCode', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 120
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && isOptString(data, 'photoURL', 500)
+        && data.role in ['merchant', 'creator']
+        && data.subscriptionStatus in ['trial', 'active', 'revoked']
+        && data.trialStartAt is timestamp
+        && data.trialEndsAt is timestamp
+        && isOptTimestamp(data, 'subscriptionEndsAt')
+        && data.subscriptionMonths is number && data.subscriptionMonths >= 0 && data.subscriptionMonths <= 240
+        && isOptString(data, 'activatedCode', 32)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMerchantConfig(data, userId) {
+      return data.keys().hasAll(['uid', 'liquidCapital', 'pinCode', 'archivedMonths', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'liquidCapital', 'pinCode', 'archivedMonths', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.liquidCapital is number
+        && data.pinCode is string && data.pinCode.size() == 4 && data.pinCode.matches('^[0-9]{4}$')
+        && data.archivedMonths is list && data.archivedMonths.size() <= 120
+        && (data.archivedMonths.size() == 0 || (data.archivedMonths[0] is string && data.archivedMonths[0].size() <= 10))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProduct(data, userId) {
+      return data.keys().hasAll(['uid', 'name', 'category', 'unitCost', 'unitPrice', 'boxPrice', 'unitsPerBox', 'stockUnits', 'minStockAlert', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'category', 'unitCost', 'unitPrice', 'boxPrice', 'unitsPerBox', 'stockUnits', 'minStockAlert', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 60
+        && data.unitCost is number && data.unitCost >= 0
+        && data.unitPrice is number && data.unitPrice >= 0
+        && data.boxPrice is number && data.boxPrice >= 0
+        && data.unitsPerBox is number && data.unitsPerBox >= 1
+        && data.stockUnits is number && data.stockUnits >= 0
+        && data.minStockAlert is number && data.minStockAlert >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSale(data, userId) {
+      return data.keys().hasAll(['uid', 'productId', 'productName', 'saleMode', 'unitsQty', 'boxesQty', 'totalUnitsSold', 'unitCostAtSale', 'totalAmount', 'capitalPortion', 'profitPortion', 'paymentMethod', 'status', 'customerName', 'customerPhone', 'dueDate', 'paidDate', 'paidMethod', 'saleDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'productId', 'productName', 'saleMode', 'unitsQty', 'boxesQty', 'totalUnitsSold', 'unitCostAtSale', 'totalAmount', 'capitalPortion', 'profitPortion', 'paymentMethod', 'status', 'customerName', 'customerPhone', 'dueDate', 'paidDate', 'paidMethod', 'saleDate', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 128
+        && data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 100
+        && data.saleMode in ['unit', 'box', 'both']
+        && data.unitsQty is number && data.unitsQty >= 0
+        && data.boxesQty is number && data.boxesQty >= 0
+        && data.totalUnitsSold is number && data.totalUnitsSold > 0
+        && data.unitCostAtSale is number && data.unitCostAtSale >= 0
+        && data.totalAmount is number && data.totalAmount >= 0
+        && data.capitalPortion is number && data.capitalPortion >= 0
+        && data.profitPortion is number
+        && data.paymentMethod in ['dinheiro', 'multicaixa', 'fiado']
+        && data.status in ['paid', 'pending']
+        && data.customerName is string && data.customerName.size() <= 100
+        && data.customerPhone is string && data.customerPhone.size() <= 30
+        && data.dueDate is string && data.dueDate.size() <= 20
+        && data.paidDate is string && data.paidDate.size() <= 20
+        && data.paidMethod in ['', 'dinheiro', 'multicaixa']
+        && data.saleDate is string && data.saleDate.size() == 10 && data.saleDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExpense(data, userId) {
+      return data.keys().hasAll(['uid', 'type', 'description', 'category', 'amount', 'paymentMethod', 'expenseDate', 'productId', 'unitsAdded', 'transportCost', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'type', 'description', 'category', 'amount', 'paymentMethod', 'expenseDate', 'productId', 'unitsAdded', 'transportCost', 'createdAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.type in ['expense', 'stock_purchase']
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 160
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 60
+        && data.amount is number && data.amount > 0
+        && data.paymentMethod in ['dinheiro', 'multicaixa', 'capital']
+        && data.expenseDate is string && data.expenseDate.size() == 10 && data.expenseDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.productId is string && data.productId.size() <= 128
+        && data.unitsAdded is number && data.unitsAdded >= 0
+        && data.transportCost is number && data.transportCost >= 0
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMonthlyReport(data, userId) {
+      return data.keys().hasAll(['uid', 'monthKey', 'totalSales', 'totalCash', 'totalMulticaixa', 'totalExpenses', 'netProfit', 'liquidCapitalSnapshot', 'closedDate', 'closedAt'])
+        && data.keys().hasOnly(['uid', 'monthKey', 'totalSales', 'totalCash', 'totalMulticaixa', 'totalExpenses', 'netProfit', 'liquidCapitalSnapshot', 'closedDate', 'closedAt'])
+        && data.uid is string && data.uid == userId && data.uid.size() <= 128
+        && data.monthKey is string && data.monthKey.size() == 7 && data.monthKey.matches('^[0-9]{4}-[0-9]{2}$')
+        && data.totalSales is number
+        && data.totalCash is number
+        && data.totalMulticaixa is number
+        && data.totalExpenses is number
+        && data.netProfit is number
+        && data.liquidCapitalSnapshot is number
+        && data.closedDate is string && data.closedDate.size() <= 20
+        && data.closedAt is timestamp;
+    }
+
+    function isValidActivationCode(data, codeId) {
+      return data.keys().hasAll(['code', 'months', 'status', 'createdByEmail', 'note', 'createdAt'])
+        && data.keys().hasOnly(['code', 'months', 'status', 'createdByEmail', 'usedByUid', 'usedByEmail', 'note', 'createdAt', 'usedAt'])
+        && data.code is string && data.code == codeId && data.code.size() >= 4 && data.code.size() <= 32 && data.code.matches('^[A-Z0-9-]+$')
+        && data.months is number && data.months >= 1 && data.months <= 24
+        && data.status in ['active', 'used', 'revoked']
+        && data.createdByEmail is string && data.createdByEmail.size() <= 120
+        && isOptString(data, 'usedByUid', 128)
+        && isOptString(data, 'usedByEmail', 120)
+        && data.note is string && data.note.size() <= 120
+        && data.createdAt is timestamp
+        && isOptTimestamp(data, 'usedAt');
+    }
+
+    function expectedMonthlyPrice() {
+      return exists(/databases/$(database)/documents/appSettings/billing)
+        ? get(/databases/$(database)/documents/appSettings/billing).data.monthlyPriceKz
+        : 2000;
+    }
+
+    function isValidBillingSettings(data) {
+      return data.keys().hasAll(['monthlyPriceKz', 'updatedAt'])
+        && data.keys().hasOnly(['monthlyPriceKz', 'updatedAt'])
+        && data.monthlyPriceKz is number && data.monthlyPriceKz >= 100 && data.monthlyPriceKz <= 10000000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPaymentProof(data) {
+      return data.keys().hasAll(['uid', 'userName', 'userEmail', 'phone', 'entity', 'recipientEmail', 'months', 'totalAmountKz', 'paymentChannel', 'proofImageData', 'notes', 'status', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'userName', 'userEmail', 'phone', 'entity', 'recipientEmail', 'months', 'totalAmountKz', 'paymentChannel', 'proofImageData', 'notes', 'status', 'generatedCode', 'createdAt', 'reviewedAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100
+        && data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 120
+        && data.phone is string && data.phone.size() >= 9 && data.phone.size() <= 30
+        && data.entity == 'Caixastok'
+        && data.recipientEmail == 'paizadigital3@gmail.com'
+        && data.months is number && data.months >= 1 && data.months <= 24
+        && data.totalAmountKz is number && data.totalAmountKz >= 100
+        && data.paymentChannel in ['multicaixa', 'iban']
+        && data.proofImageData is string && data.proofImageData.size() >= 20 && data.proofImageData.size() <= 650000
+        && data.notes is string && data.notes.size() <= 300
+        && data.status in ['pending', 'approved', 'rejected']
+        && isOptString(data, 'generatedCode', 32)
+        && data.createdAt is timestamp
+        && isOptTimestamp(data, 'reviewedAt');
+    }
+
+    // /appSettings/{settingId}
+    match /appSettings/{settingId} {
+      allow get: if isValidId(settingId) && settingId == 'billing';
+      allow list: if false;
+      allow create, update: if isValidId(settingId) && settingId == 'billing'
+        && isCreator()
+        && isValidBillingSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // /users/{userId}
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isCreator());
+      allow list: if isCreator();
+      allow create: if isValidId(userId) && isOwner(userId)
+        && isValidUserAccount(incoming(), userId)
+        && incoming().email == request.auth.token.email
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().trialStartAt == request.time
+        && (
+          (isCreator() && incoming().role == 'creator' && incoming().subscriptionStatus == 'active')
+          || (
+            incoming().role == 'merchant'
+            && incoming().subscriptionStatus == 'trial'
+            && incoming().subscriptionMonths == 0
+            && incoming().trialEndsAt > request.time
+            && incoming().trialEndsAt <= request.time + duration.value(15, 'd')
+          )
+        );
+      allow update: if isValidId(userId)
+        && isValidUserAccount(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().trialStartAt == existing().trialStartAt
+        && incoming().updatedAt == request.time
+        && (
+          isCreator()
+          || (
+            isOwner(userId)
+            && incoming().role == existing().role
+            && (
+              // Action 1: Safe profile display update
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+              )
+              ||
+              // Action 2: Atomic activation code redemption
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['subscriptionStatus', 'subscriptionEndsAt', 'subscriptionMonths', 'activatedCode', 'updatedAt'])
+                && incoming().subscriptionStatus == 'active'
+                && incoming().activatedCode is string
+                && isValidId(incoming().activatedCode)
+                && get(/databases/$(database)/documents/activationCodes/$(incoming().activatedCode)).data.status == 'active'
+                && getAfter(/databases/$(database)/documents/activationCodes/$(incoming().activatedCode)).data.status == 'used'
+                && getAfter(/databases/$(database)/documents/activationCodes/$(incoming().activatedCode)).data.usedByUid == request.auth.uid
+                && incoming().subscriptionMonths == get(/databases/$(database)/documents/activationCodes/$(incoming().activatedCode)).data.months
+                && incoming().subscriptionEndsAt is timestamp
+                && incoming().subscriptionEndsAt > request.time
+                && incoming().subscriptionEndsAt <= request.time + duration.value(incoming().subscriptionMonths * 32 + 365, 'd')
+              )
+            )
+          )
+        );
+      allow delete: if false;
+
+      // Master Gate for merchant subcollections
+      match /config/{configId} {
+        allow get: if isValidId(userId) && isValidId(configId) && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(configId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidMerchantConfig(incoming(), userId)
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(configId) && isOwner(userId)
+          && isValidMerchantConfig(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['liquidCapital', 'pinCode', 'archivedMonths', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(configId) && isOwner(userId);
+      }
+
+      match /products/{productId} {
+        allow get: if isValidId(userId) && isValidId(productId) && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(productId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidProduct(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(productId) && isOwner(userId)
+          && isValidProduct(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'unitCost', 'unitPrice', 'boxPrice', 'unitsPerBox', 'stockUnits', 'minStockAlert', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(productId) && isOwner(userId);
+      }
+
+      match /sales/{saleId} {
+        allow get: if isValidId(userId) && isValidId(saleId) && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(saleId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidSale(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && isValidId(saleId) && isOwner(userId)
+          && isValidSale(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          // Terminal state lock: once paid, cannot revert or modify financial totals
+          && existing().status == 'pending'
+          && incoming().status == 'paid'
+          && incoming().paidMethod in ['dinheiro', 'multicaixa']
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'paidDate', 'paidMethod', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(saleId) && isOwner(userId);
+      }
+
+      match /expenses/{expenseId} {
+        allow get: if isValidId(userId) && isValidId(expenseId) && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(expenseId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidExpense(incoming(), userId)
+          && incoming().createdAt == request.time;
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(expenseId) && isOwner(userId);
+      }
+
+      match /reports/{reportId} {
+        allow get: if isValidId(userId) && isValidId(reportId) && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(reportId) && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidMonthlyReport(incoming(), userId)
+          && incoming().closedAt == request.time;
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(reportId) && isOwner(userId);
+      }
+    }
+
+    // /activationCodes/{codeId}
+    match /activationCodes/{codeId} {
+      allow get: if isValidId(codeId) && isVerified();
+      allow list: if isCreator();
+      allow create: if isValidId(codeId) && isCreator()
+        && isValidActivationCode(incoming(), codeId)
+        && incoming().status == 'active'
+        && incoming().createdByEmail == request.auth.token.email
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(codeId)
+        && isValidActivationCode(incoming(), codeId)
+        && incoming().code == existing().code
+        && incoming().months == existing().months
+        && incoming().createdByEmail == existing().createdByEmail
+        && incoming().createdAt == existing().createdAt
+        && (
+          // Creator revoking or updating note
+          (isCreator() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note']))
+          ||
+          // User redeeming active code atomically with /users/{uid} update
+          (
+            isVerified()
+            && existing().status == 'active'
+            && incoming().status == 'used'
+            && incoming().usedByUid == request.auth.uid
+            && incoming().usedByEmail == request.auth.token.email
+            && incoming().usedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'usedByUid', 'usedByEmail', 'usedAt'])
+            && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.activatedCode == codeId
+          )
+        );
+      allow delete: if isValidId(codeId) && isCreator();
+    }
+
+    // /paymentProofs/{proofId}
+    match /paymentProofs/{proofId} {
+      allow get: if isValidId(proofId) && (isCreator() || (isVerified() && existing().uid == request.auth.uid));
+      allow list: if isCreator() || (isVerified() && resource.data.uid == request.auth.uid);
+      allow create: if isValidId(proofId) && isVerified()
+        && isValidPaymentProof(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().totalAmountKz == incoming().months * expectedMonthlyPrice();
+      allow update: if isValidId(proofId) && isCreator()
+        && isValidPaymentProof(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().totalAmountKz == existing().totalAmountKz
+        && incoming().reviewedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'generatedCode', 'reviewedAt']);
+      allow delete: if isValidId(proofId) && isCreator();
+    }
+  }
+}
